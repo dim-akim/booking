@@ -38,7 +38,7 @@ class IncorrectPasswordException(BookingException):
     detail = "Неверный пароль"
 
 
-class TokenAbsentExceptionException(BookingException):
+class TokenAbsentException(BookingException):
     status_code = status.HTTP_401_UNAUTHORIZED
     detail = "Токен отсутствует"
 
@@ -46,3 +46,23 @@ class TokenAbsentExceptionException(BookingException):
 class IncorrectTokenFormatException(BookingException):
     status_code = status.HTTP_401_UNAUTHORIZED
     detail = "Неверный формат токена"
+
+
+class RoomCanNotBeBookedException(BookingException):
+    status_code = status.HTTP_409_CONFLICT
+    detail = 'Не осталось свободных номеров'
+
+
+class BookingNotFoundException(BookingException):
+    status_code = status.HTTP_404_NOT_FOUND
+    detail = 'Не существует бронирования с таким id'
+
+
+class BookingCannotBeDeletedException(BookingException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    detail = 'Невозможно удалить бронирование: его не существует или нет прав'
+
+
+class NotAuthorizedException(BookingException):
+    status_code = status.HTTP_403_FORBIDDEN
+    detail = 'У вас нет прав для совершения этого действия'

@@ -2,15 +2,15 @@ from datetime import date
 
 from sqlalchemy import select, and_, func, or_, insert
 
+from app.hotels.models import Hotel, Room
 from app.bookings.models import Booking
 from app.dao import BaseDAO
 from app.database import async_session_maker, engine
-from app.hotels.models import Room
-from app.hotels.utils import query_rooms_left, get_rooms_left
+from app.hotels.utils import get_rooms_left
 
 
-class BookingDAO(BaseDAO):
-    model = Booking
+class HotelDAO(BaseDAO):
+    model = Hotel
 
     @classmethod
     async def add(cls,
@@ -22,7 +22,7 @@ class BookingDAO(BaseDAO):
         async with async_session_maker() as session:
             rooms_left = await get_rooms_left(room_id, date_from, date_to, session)
 
-            if rooms_left:
+            if rooms_left > 0:
                 query_price = select(Room.price).filter_by(id=room_id)
                 price = await session.execute(query_price)
                 price = price.scalar()
@@ -37,3 +37,14 @@ class BookingDAO(BaseDAO):
                 new_booking = await session.execute(query_add_booking)
                 await session.commit()
                 return new_booking.scalar()
+
+
+class RoomDAO(BaseDAO):
+    model = Room
+
+    @classmethod
+    async def get_all_available(cls,
+                                hotel_id: int,
+                                date_from: date,
+                                date_to: date):
+        pass
