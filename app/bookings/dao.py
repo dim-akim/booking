@@ -13,12 +13,28 @@ class BookingDAO(BaseDAO):
     model = Booking
 
     @classmethod
+    async def get_all_with_images(cls,
+                                  user_id: int):
+        query_get_bookings = (
+            select(
+                Booking.__table__.columns,
+                Room.__table__.columns
+            )
+            .select_from(Booking)
+            .outerjoin(Room, Booking.room_id == Room.id)
+            .where(Booking.user_id == user_id)
+        )
+
+        async with async_session_maker() as session:
+            bookings = await session.execute(query_get_bookings)
+            return bookings
+
+    @classmethod
     async def add(cls,
                   user_id: int,
                   room_id: int,
                   date_from: date,
                   date_to: date):
-
         async with async_session_maker() as session:
             rooms_left = await session.execute(
                 query_rooms_left(room_id, date_from, date_to)

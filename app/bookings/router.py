@@ -15,9 +15,9 @@ router = APIRouter(
 )
 
 
-@router.get('/')
+@router.get('')
 async def get_all_bookings(user: User = Depends(get_current_user)) -> list[SBooking]:
-    result = await BookingDAO.get_all(user_id=user.id)
+    result = await BookingDAO.get_all_with_images(user.id)
     return result
 
 

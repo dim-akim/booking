@@ -38,19 +38,25 @@ class RoomDAO(BaseDAO):
             GROUP BY room_id
         )
         """
-        booked_rooms = select(
-            Booking.room_id, func.count(Booking.room_id).label('booked')
-        ).select_from(Booking).where(
-            dates_within_range(date_from, date_to)
-        ).group_by(Booking.room_id).cte('booked_rooms')
+        booked_rooms = (
+            select(
+                Booking.room_id, func.count(Booking.room_id).label('booked')
+            )
+            .select_from(Booking)
+            .where(dates_within_range(date_from, date_to))
+            .group_by(Booking.room_id).cte('booked_rooms')
+        )
 
-        query_get_rooms = select(
-            Room.__table__.columns,
-            (Room.price * (date_to - date_from).days).label('total_cost'),
-            (Room.quantity - func.coalesce(booked_rooms.c.booked, 0)).label('rooms_left')
-        ).select_from(Room).outerjoin(
-            booked_rooms, Room.id == booked_rooms.c.room_id
-        ).where(Room.hotel_id == hotel_id).group_by(Room.id, booked_rooms.c.booked)
+        query_get_rooms = (
+            select(
+                Room.__table__.columns,
+                (Room.price * (date_to - date_from).days).label('total_cost'),
+                (Room.quantity - func.coalesce(booked_rooms.c.booked, 0)).label('rooms_left')
+            )
+            .select_from(Room).outerjoin(booked_rooms, Room.id == booked_rooms.c.room_id)
+            .where(Room.hotel_id == hotel_id)
+            .group_by(Room.id, booked_rooms.c.booked)
+        )
 
         async with async_session_maker() as session:
             hotel_rooms = await session.execute(query_get_rooms)
