@@ -23,3 +23,8 @@ class SRoom(BaseModel):
     services: list[str]
     quantity: int
     image_id: int
+
+
+class SRoomInfo(SRoom):
+    total_cost: int
+    rooms_left: int

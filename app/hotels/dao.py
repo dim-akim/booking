@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import select, and_, func, or_, insert
 
@@ -6,7 +6,6 @@ from app.hotels.models import Hotel, Room
 from app.bookings.models import Booking
 from app.dao import BaseDAO
 from app.database import async_session_maker, engine
-from app.hotels.utils import get_rooms_left
 
 
 class HotelDAO(BaseDAO):
@@ -19,24 +18,7 @@ class HotelDAO(BaseDAO):
                   date_from: date,
                   date_to: date):
 
-        async with async_session_maker() as session:
-            rooms_left = await get_rooms_left(room_id, date_from, date_to, session)
-
-            if rooms_left > 0:
-                query_price = select(Room.price).filter_by(id=room_id)
-                price = await session.execute(query_price)
-                price = price.scalar()
-                query_add_booking = insert(Booking).values(
-                    room_id=room_id,
-                    user_id=user_id,
-                    date_from=date_from,
-                    date_to=date_to,
-                    price=price
-                ).returning(Booking)
-
-                new_booking = await session.execute(query_add_booking)
-                await session.commit()
-                return new_booking.scalar()
+        pass
 
 
 class RoomDAO(BaseDAO):
@@ -47,4 +29,46 @@ class RoomDAO(BaseDAO):
                                 hotel_id: int,
                                 date_from: date,
                                 date_to: date):
-        pass
+        """
+        WITH booked_rooms AS (
+            SELECT room_id, COUNT(room_id) as booked
+            FROM bookings
+            WHERE date_from >= '2023-06-15' AND date_from <= '2023-06-30' OR
+            date_from <= '2023-06-15' AND date_to > '2023-06-15'
+            GROUP BY room_id
+        )
+        """
+        booked_rooms = select(
+            Booking.room_id, func.count(Booking.room_id).label('booked')
+        ).select_from(Booking).where(
+            dates_within_range(date_from, date_to)
+        ).group_by(Booking.room_id).cte('booked_rooms')
+
+        query_get_rooms = select(
+            Room.__table__.columns,
+            (Room.price * (date_to - date_from).days).label('total_cost'),
+            (Room.quantity - func.coalesce(booked_rooms.c.booked, 0)).label('rooms_left')
+        ).select_from(Room).outerjoin(
+            booked_rooms, Room.id == booked_rooms.c.room_id
+        ).where(Room.hotel_id == hotel_id).group_by(Room.id, booked_rooms.c.booked)
+
+        async with async_session_maker() as session:
+            hotel_rooms = await session.execute(query_get_rooms)
+            return hotel_rooms.mappings().all()
+
+
+def dates_within_range(date_from, date_to):
+    """
+    date_from >= '2023-06-15' AND date_from <= '2023-06-30' OR
+    date_from <= '2023-06-15' AND date_to > '2023-06-15'
+    """
+    return or_(
+                and_(
+                    Booking.date_from >= date_from,
+                    Booking.date_from <= date_to,
+                ),
+                and_(
+                    Booking.date_from <= date_from,
+                    Booking.date_to > date_from,
+                ),
+            )
