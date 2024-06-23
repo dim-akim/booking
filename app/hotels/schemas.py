@@ -14,6 +14,10 @@ class SHotel(BaseModel):
     image_id: int
 
 
+class SHotelInfo(SHotel):
+    rooms_left: int
+
+
 class SRoom(BaseModel):
     id: int
     hotel_id: int

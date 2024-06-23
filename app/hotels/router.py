@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.exceptions import RoomCanNotBeBookedException
 from app.hotels.dao import HotelDAO, RoomDAO
-from app.hotels.schemas import SHotel, SRoom, SRoomInfo
+from app.hotels.schemas import SHotel, SRoom, SRoomInfo, SHotelInfo
 from app.users.dependencies import get_current_user
 from app.users.models import User
 
@@ -20,6 +20,14 @@ async def get_all_rooms(hotel_id: int,
                         date_from: date,
                         date_to: date) -> list[SRoomInfo]:
     result = await RoomDAO.get_all_available(hotel_id, date_from, date_to)
+    return result
+
+
+@router.get('/{hotel_location}')
+async def get_all_rooms(hotel_location: str,
+                        date_from: date,
+                        date_to: date) -> list[SHotelInfo]:
+    result = await HotelDAO.get_all()
     return result
 
 
