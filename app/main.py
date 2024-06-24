@@ -37,13 +37,13 @@ class SHotel(BaseModel):
     stars: int
 
 
-@app.get('/hotels')
-def get_hotels(search_args: HotelsSearchArgs = Depends()) -> list[SHotel]:
-    hotels = [
-        {
-            'address': 'ул. Ленина, 1',
-            'name': '1st Hotel',
-            'stars': 5
-        }
-    ]
-    return hotels
+# @app.get('/hotels')
+# def get_hotels(search_args: HotelsSearchArgs = Depends()) -> list[SHotel]:
+#     hotels = [
+#         {
+#             'address': 'ул. Ленина, 1',
+#             'name': '1st Hotel',
+#             'stars': 5
+#         }
+#     ]
+#     return hotels
