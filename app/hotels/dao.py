@@ -13,38 +13,52 @@ class HotelDAO(BaseDAO):
 
     @classmethod
     async def get_all_by_location(cls,
+                                  location: str,
                                   date_from: date,
                                   date_to: date):
         """
-        WITH booked_rooms AS (
-            SELECT room_id, COUNT(room_id) as booked
-            FROM bookings
-            WHERE date_from >= '2023-06-15' AND date_from <= '2023-06-30' OR
-            date_from <= '2023-06-15' AND date_to > '2023-06-15'
-            GROUP BY room_id
-        )
-        -- SELECT room_id, hotel_id, booked
-        -- FROM rooms
-        -- JOIN booked_rooms ON booked_rooms.room_id = room_id
-        -- WHERE hotel_id = 1
-
-        SELECT hotel_id, COALESCE(booked, 0) AS rooms_left TODO доделать
+        SELECT hotel_id, SUM(quantity - COALESCE(booked, 0)) AS rooms_left
         FROM rooms
-        LEFT JOIN booked_rooms ON booked_rooms.room_id = room_id
-        GROUP BY hotel_id, booked_rooms.booked
+        LEFT JOIN booked_rooms ON booked_rooms.room_id = id
+        GROUP BY hotel_id
+
+        SELECT hotel_id, name, location, rooms_left
+        FROM hotels
+        LEFT JOIN booked_hotels ON id = booked_hotels.hotel_id
+        WHERE location LIKE '%Алтай%' AND rooms_left > 10
         """
 
         booked_rooms = query_booked_rooms(date_from, date_to)
 
+        booked_hotels = (
+            select(
+                Room.hotel_id,
+                func.sum(Room.quantity - func.coalesce(booked_rooms.c.booked, 0)).label('rooms_left')
+            )
+            .select_from(Room)
+            .outerjoin(booked_rooms, Room.id == booked_rooms.c.room_id)
+            .group_by(Room.hotel_id)
+            .cte('booked_hotels')
+        )
+
         query_get_hotels = (
             select(
                 Hotel.__table__.columns,
-                (Room.quantity - func.coalesce(booked_rooms.c.booked, 0)).label('rooms_left')
+                booked_hotels.c.rooms_left
             )
-            .select_from(Hotel).outerjoin(booked_rooms, Room.id == booked_rooms.c.room_id)
-            .where(Room.hotel_id == hotel_id)
-            .group_by(Room.id, booked_rooms.c.booked)
+            .select_from(Hotel)
+            .outerjoin(booked_hotels, Hotel.id == booked_hotels.c.hotel_id)
+            .where(
+                and_(
+                    booked_hotels.c.rooms_left > 0,
+                    Hotel.location.like(f'%{location}%')
+                )
+            )
         )
+
+        async with async_session_maker() as session:
+            hotels = await session.execute(query_get_hotels)
+            return hotels.mappings().all()
 
 
 class RoomDAO(BaseDAO):

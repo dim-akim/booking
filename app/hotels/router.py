@@ -27,7 +27,7 @@ async def get_all_rooms(hotel_id: int,
 async def get_all_rooms(hotel_location: str,
                         date_from: date,
                         date_to: date) -> list[SHotelInfo]:
-    result = await HotelDAO.get_all()
+    result = await HotelDAO.get_all_by_location(hotel_location, date_from, date_to)
     return result
 
 
